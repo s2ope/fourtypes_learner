@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
@@ -12,7 +12,17 @@ import {
   Clock,
   Maximize2,
   X,
+  Volume2,
+  Pause,
+  Play,
+  CircleStop,
+  Mail,
 } from "lucide-react";
+
+import LanguageSwitcher, {
+  translations,
+  type Lang,
+} from "@/components/Translation";
 
 const shortPoints = [
   {
@@ -49,6 +59,7 @@ const AUTHOR_NAME = "S2ope";
 const AUTHOR_AVATAR_SRC = "/author.jpg";
 const AUTHOR_INITIALS = getInitials(AUTHOR_NAME);
 const READ_TIME_MINUTES = getReadTimeMinutes(fullText);
+const CONTACT_EMAIL = "contact@fourtypes.com";
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -61,11 +72,104 @@ function getReadTimeMinutes(text: string) {
   return Math.max(1, Math.ceil(words / 200));
 }
 
+function getSpeakText({
+  title,
+  desc,
+  body,
+}: {
+  title: string;
+  desc: string;
+  body: string;
+}) {
+  return [title, desc, body].filter(Boolean).join("\n\n").trim();
+}
+
 export default function KnowledgePhilosophersCard() {
+  const [lang, setLang] = useState<Lang>("ne");
   const [open, setOpen] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
   const [avatarErrored, setAvatarErrored] = useState(false);
+  const [ttsState, setTtsState] = useState<"idle" | "speaking" | "paused">(
+    "idle",
+  );
+  const [ttsHint, setTtsHint] = useState<string | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const t = translations[lang];
+
+  const contactHref = useMemo(() => {
+    const subject = encodeURIComponent(`Language request (${lang.toUpperCase()})`);
+    const body = encodeURIComponent(
+      `Hi,\n\nI’d like to request this content in my language.\n\nLanguage: ${lang.toUpperCase()}\n\nThanks!`,
+    );
+    return `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+  }, [lang]);
+
+  const isTtsSupported = useMemo(() => {
+    return (
+      typeof window !== "undefined" &&
+      "speechSynthesis" in window &&
+      typeof window.SpeechSynthesisUtterance !== "undefined"
+    );
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    if (!isTtsSupported) return;
+    window.speechSynthesis.cancel();
+    utteranceRef.current = null;
+    setTtsState("idle");
+  }, [isTtsSupported]);
+
+  const handleLangChange = useCallback(
+    (nextLang: Lang) => {
+      if (nextLang === lang) return;
+      stopSpeaking();
+      setLang(nextLang);
+    },
+    [lang, stopSpeaking],
+  );
+
+  const startSpeaking = useCallback(() => {
+    if (!isTtsSupported) {
+      setTtsHint(t.ttsUnavailable);
+      setTimeout(() => setTtsHint(null), 2500);
+      return;
+    }
+
+    stopSpeaking();
+
+    const utterance = new SpeechSynthesisUtterance(
+      getSpeakText({ title: t.title, desc: t.desc, body: fullText }),
+    );
+    utterance.lang = t.ttsLang;
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.onend = () => {
+      utteranceRef.current = null;
+      setTtsState("idle");
+    };
+    utterance.onerror = () => {
+      utteranceRef.current = null;
+      setTtsState("idle");
+    };
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    setTtsState("speaking");
+  }, [isTtsSupported, stopSpeaking, t]);
+
+  const pauseSpeaking = useCallback(() => {
+    if (!isTtsSupported) return;
+    window.speechSynthesis.pause();
+    setTtsState("paused");
+  }, [isTtsSupported]);
+
+  const resumeSpeaking = useCallback(() => {
+    if (!isTtsSupported) return;
+    window.speechSynthesis.resume();
+    setTtsState("speaking");
+  }, [isTtsSupported]);
 
   useEffect(() => {
     if (!isReaderOpen) return;
@@ -81,8 +185,9 @@ export default function KnowledgePhilosophersCard() {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
+      stopSpeaking();
     };
-  }, [isReaderOpen]);
+  }, [isReaderOpen, stopSpeaking]);
 
   return (
     <main className="min-h-screen bg-neutral-950 px-4 py-10 text-white sm:px-6 lg:px-8">
@@ -97,21 +202,34 @@ export default function KnowledgePhilosophersCard() {
 
           <div className="relative grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
-              <motion.p
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.25em] text-white/70"
-              >
-                <Brain size={14} /> Human Awareness
-              </motion.p>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <motion.p
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.25em] text-white/70"
+                >
+                  <Brain size={14} /> Human Awareness
+                </motion.p>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <LanguageSwitcher
+                    lang={lang}
+                    onLangChange={handleLangChange}
+                  />
+                </motion.div>
+              </div>
               <motion.h1
                 initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 }}
                 className="max-w-2xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl"
               >
-                Four kinds of people around the table of knowledge.
+                {t.title}
               </motion.h1>
 
               <motion.div
@@ -154,10 +272,24 @@ export default function KnowledgePhilosophersCard() {
                 transition={{ delay: 0.35 }}
                 className="mt-5 max-w-xl text-base leading-8 text-white/65 sm:text-lg"
               >
-                Some are confidently lost. Some are humble enough to learn. Some
-                hold knowledge silently. And some turn knowledge into wisdom by
-                sharing it.
+                {t.desc}
               </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="mt-4 flex flex-wrap items-center gap-2 text-xs text-white/45"
+              >
+                <Mail size={14} className="text-white/40" />
+                <span>{t.contactHint}</span>
+                <a
+                  href={contactHref}
+                  className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
+                >
+                  {t.contactCta}
+                </a>
+              </motion.div>
 
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
                 {shortPoints.map((item, index) => (
@@ -185,7 +317,7 @@ export default function KnowledgePhilosophersCard() {
                   onClick={() => setOpen(!open)}
                   className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-white/90"
                 >
-                  {open ? "Show less" : "Read more"}
+                  {open ? t.showLess : t.readMore}
                   {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </motion.button>
 
@@ -196,7 +328,7 @@ export default function KnowledgePhilosophersCard() {
                     onClick={() => setIsReaderOpen(true)}
                     className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white/85 transition hover:bg-white/10"
                   >
-                    Full screen <Maximize2 size={16} />
+                    {t.fullScreen} <Maximize2 size={16} />
                   </motion.button>
                 )}
               </div>
@@ -336,10 +468,10 @@ export default function KnowledgePhilosophersCard() {
               <div className="flex items-start justify-between gap-4 border-b border-white/10 bg-white/[0.03] px-6 py-5">
                 <div className="min-w-0">
                   <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/55">
-                    Full screen reader
+                    {t.fullScreenReader}
                   </p>
                   <h2 className="mt-2 truncate text-lg font-semibold text-white sm:text-xl">
-                    Four kinds of people around the table of knowledge.
+                    {t.title}
                   </h2>
 
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/70">
@@ -370,15 +502,65 @@ export default function KnowledgePhilosophersCard() {
                       {READ_TIME_MINUTES} min read
                     </span>
                   </div>
+
+                  {ttsHint && (
+                    <p className="mt-3 text-xs text-white/55">{ttsHint}</p>
+                  )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsReaderOpen(false)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10"
-                >
-                  <X size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                  {ttsState === "idle" ? (
+                    <button
+                      type="button"
+                      onClick={startSpeaking}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10"
+                    >
+                      <Volume2 size={16} />
+                      <span className="hidden sm:inline">{t.readAloud}</span>
+                      <span className="sm:hidden">TTS</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {ttsState === "speaking" ? (
+                        <button
+                          type="button"
+                          aria-label={t.pause}
+                          onClick={pauseSpeaking}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10"
+                        >
+                          <Pause size={18} />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          aria-label={t.resume}
+                          onClick={resumeSpeaking}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10"
+                        >
+                          <Play size={18} />
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        aria-label={t.stop}
+                        onClick={stopSpeaking}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10"
+                      >
+                        <CircleStop size={18} />
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    aria-label="Close"
+                    onClick={() => setIsReaderOpen(false)}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
 
               <div className="max-h-[calc(100vh-12rem)] overflow-y-auto px-6 py-8 sm:px-10 sm:py-10">
