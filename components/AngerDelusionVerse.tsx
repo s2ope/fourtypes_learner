@@ -1,6 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { Share2 } from "lucide-react";
+import { useState } from "react";
 
 const steps = [
   {
@@ -46,6 +48,8 @@ const steps = [
 ];
 
 export default function AngerDelusionVerse() {
+  const [showToast, setShowToast] = useState(false);
+
   return (
     <section className="relative overflow-hidden bg-[#07030f] px-5 py-24 text-white">
       {/* Mystical background */}
@@ -63,6 +67,33 @@ export default function AngerDelusionVerse() {
           <p className="mb-3 text-sm uppercase tracking-[0.35em] text-amber-300">
             Bhagavad Gita · 2.62–2.63
           </p>
+          <motion.div
+            onClick={() => {
+              setShowToast(true);
+              setTimeout(() => setShowToast(false), 2500);
+            }}
+            animate={{ y: [0, -8, 0] }}
+            transition={{
+              duration: 2.4,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="absolute right-6 top-6 cursor-pointer rounded-2xl border border-yellow-400/30 bg-yellow-400/20 p-3"
+          >
+            <Share2 size={22} className="text-yellow-300" />
+          </motion.div>
+          <AnimatePresence>
+            {showToast && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full border border-yellow-400/40 bg-yellow-300 px-5 py-2 text-sm font-semibold text-black shadow-lg"
+              >
+                Coming Soon
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <h2 className="mb-6 text-4xl font-semibold tracking-tight md:text-6xl">
             How Anger Becomes Delusion

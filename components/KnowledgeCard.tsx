@@ -63,7 +63,10 @@ const CONTACT_EMAIL = "contact@fourtypes.com";
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  const initials = parts.map((part) => part[0]).join("").slice(0, 2);
+  const initials = parts
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2);
   return initials.toUpperCase() || "A";
 }
 
@@ -87,7 +90,6 @@ function getSpeakText({
 export default function KnowledgePhilosophersCard() {
   const [lang, setLang] = useState<Lang>("ne");
   const [open, setOpen] = useState(false);
-  const [showToast, setShowToast] = useState(false);
   const [isReaderOpen, setIsReaderOpen] = useState(false);
   const [avatarErrored, setAvatarErrored] = useState(false);
   const [ttsState, setTtsState] = useState<"idle" | "speaking" | "paused">(
@@ -99,7 +101,9 @@ export default function KnowledgePhilosophersCard() {
   const t = translations[lang];
 
   const contactHref = useMemo(() => {
-    const subject = encodeURIComponent(`Language request (${lang.toUpperCase()})`);
+    const subject = encodeURIComponent(
+      `Language request (${lang.toUpperCase()})`,
+    );
     const body = encodeURIComponent(
       `Hi,\n\nI’d like to request this content in my language.\n\nLanguage: ${lang.toUpperCase()}\n\nThanks!`,
     );
@@ -418,22 +422,6 @@ export default function KnowledgePhilosophersCard() {
                   }`}
                 />
               ))}
-
-              <motion.div
-                onClick={() => {
-                  setShowToast(true);
-                  setTimeout(() => setShowToast(false), 2500);
-                }}
-                animate={{ y: [0, -8, 0] }}
-                transition={{
-                  duration: 2.4,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="absolute right-6 top-6 cursor-pointer rounded-2xl border border-yellow-400/30 bg-yellow-400/20 p-3"
-              >
-                <Share2 size={22} className="text-yellow-300" />
-              </motion.div>
             </div>
           </div>
         </motion.div>
@@ -576,19 +564,6 @@ export default function KnowledgePhilosophersCard() {
                 </div>
               </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full border border-yellow-400/40 bg-yellow-300 px-5 py-2 text-sm font-semibold text-black shadow-lg"
-          >
-            Coming Soon
           </motion.div>
         )}
       </AnimatePresence>
