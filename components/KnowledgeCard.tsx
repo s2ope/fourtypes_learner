@@ -59,7 +59,7 @@ const AUTHOR_NAME = "S2ope";
 const AUTHOR_AVATAR_SRC = "/author.jpg";
 const AUTHOR_INITIALS = getInitials(AUTHOR_NAME);
 const READ_TIME_MINUTES = getReadTimeMinutes(fullText);
-const CONTACT_EMAIL = "contact@fourtypes.com";
+const CONTACT_EMAIL = "shoujanya.shakya@gmail.com";
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
